@@ -20,6 +20,7 @@ import {
 } from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { time } from 'console';
 
 let commentId = 1;
 const default_author = "Unknown"
@@ -73,8 +74,7 @@ export class WorkspaceContext {
 	constructor(private context: ExtensionContext, public workspaceRoot: string) {
 		this.commentController = this.initCommentController()
 
-		this.fileWatcher = workspace.createFileSystemWatcher(`**/${this.filePath}`);
-		this.watchForFileChanges();
+		this.fileWatcher = this.initFileWatcher()
 
 		this.readThreads();
 	}
@@ -323,7 +323,13 @@ export class WorkspaceContext {
 			})
 		}
 		const data = JSON.stringify(threads)
+		// Pause watching for file changes because we are going to cause one
+		this.stopWatchingForFileChanges()
 		fs.writeFileSync(this.filePath, data)
+		// Otherwise the event is still triggered
+		setTimeout(() => {
+			this.initFileWatcher()
+		}, 100)
 	}
 
 	saveThread(thread: CommentThread) {
@@ -351,6 +357,12 @@ export class WorkspaceContext {
 		this.registerCommands();
 	}
 
+	initFileWatcher() {
+		this.fileWatcher = workspace.createFileSystemWatcher(`**/${this.filePath}`);	
+		this.watchForFileChanges();
+		return this.fileWatcher
+	}
+
 	/**
 	 * watch on the comments file for changes
 	 */
@@ -365,6 +377,10 @@ export class WorkspaceContext {
 		this.fileWatcher.onDidDelete(() => {
 			this.refresh();
 		});
+	}
+
+	stopWatchingForFileChanges() {
+		this.fileWatcher.dispose()
 	}
 
 
