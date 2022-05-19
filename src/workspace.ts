@@ -1,7 +1,6 @@
 import {
 	commands,
 	workspace,
-	window,
 	ExtensionContext,
 	Range,
 	Disposable,
@@ -15,8 +14,9 @@ import {
 	comments,
 	TextDocument,
 	CancellationToken,
-	Uri,
 	WorkspaceConfiguration,
+	FileSystemWatcher,
+	CommentController,
 } from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -65,22 +65,17 @@ class NoteComment implements Comment {
 
 
 export class WorkspaceContext {
-	private commentController;
+	private commentController: CommentController;
 	private commands: Disposable[] = [];
 	private threads = new Set<CommentThread>();
+	private fileWatcher: FileSystemWatcher;
 
 	constructor(private context: ExtensionContext, public workspaceRoot: string) {
-		// A `CommentController` is able to provide comments for documents.
-		this.commentController = comments.createCommentController('textfile_comments', 'Textfile Comments');
-		context.subscriptions.push(this.commentController);
+		this.commentController = this.initCommentController()
 
-		// A `CommentingRangeProvider` controls where gutter decorations that allow adding comments are shown
-		this.commentController.commentingRangeProvider = {
-			provideCommentingRanges: (document: TextDocument, token: CancellationToken) => {
-				const lineCount = document.lineCount;
-				return [new Range(0, 0, lineCount - 1, 0)];
-			}
-		};
+		this.fileWatcher = workspace.createFileSystemWatcher(`**/${this.filePath}`);
+		this.watchForFileChanges();
+
 		this.readThreads();
 	}
 	get filePath(): fs.PathLike {
@@ -93,6 +88,22 @@ export class WorkspaceContext {
 
 	get author(): string {
 		return this.config.get('author')!
+	}
+
+	initCommentController() {
+		// A `CommentController` is able to provide comments for documents.
+		this.commentController = comments.createCommentController('textfile_comments', 'Textfile Comments');
+		this.context.subscriptions.push(this.commentController);
+
+		// A `CommentingRangeProvider` controls where gutter decorations that allow adding comments are shown
+		this.commentController.commentingRangeProvider = {
+			provideCommentingRanges: (document: TextDocument, token: CancellationToken) => {
+				const lineCount = document.lineCount;
+				return [new Range(0, 0, lineCount - 1, 0)];
+			}
+		};
+
+		return this.commentController;
 	}
 
 	watchConfiguration() {
@@ -260,9 +271,18 @@ export class WorkspaceContext {
 		this.saveThread(thread)
 	}
 
+	refresh() {
+		for (const thread of this.threads) {
+			thread.dispose();
+		}
+		this.readThreads();
+	}
+
 	readThreads() {
 		if (fs.existsSync(this.filePath)) {
-			const threads = require(this.filePath.toString())
+			this.threads = new Set<CommentThread>();
+			const bufferData = fs.readFileSync(this.filePath)
+			const threads= JSON.parse(bufferData.toString())
 			for (const thread of threads) {
 				const new_thread = this.commentController.createCommentThread(
 					thread.uri,
@@ -271,7 +291,7 @@ export class WorkspaceContext {
 						return NoteComment.fromJSON(comment)
 					})
 				)
-				new_thread.comments.forEach((comment:Comment) => {
+				new_thread.comments.forEach((comment: Comment) => {
 					(comment as NoteComment).parent = new_thread
 				})
 				new_thread.contextValue = thread.contextValue
@@ -330,5 +350,22 @@ export class WorkspaceContext {
 		this.unregisterCommands();
 		this.registerCommands();
 	}
+
+	/**
+	 * watch on the comments file for changes
+	 */
+	watchForFileChanges() {
+		// refresh comment view on manual changes in the comments file
+		this.fileWatcher.onDidChange(() => {
+			this.refresh();
+		});
+		this.fileWatcher.onDidCreate(() => {
+			this.refresh();
+		});
+		this.fileWatcher.onDidDelete(() => {
+			this.refresh();
+		});
+	}
+
 
 }
