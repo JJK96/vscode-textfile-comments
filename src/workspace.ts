@@ -153,14 +153,16 @@ export class WorkspaceContext {
 			thread.comments = thread.comments.filter(cmt => (cmt as NoteComment).id !== comment.id);
 
 			if (thread.comments.length === 0) {
-				thread.dispose();
+				this.deleteThread(thread)
+			} else {
+				this.writeThreads()
 			}
 		})
 		this.commands.push(deleteNoteComment);
 		this.context.subscriptions.push(deleteNoteComment);
 
 		let deleteNote = commands.registerCommand('textfile_comments.deleteNote', (thread: CommentThread) => {
-			thread.dispose();
+			this.deleteThread(thread)
 		})
 		this.commands.push(deleteNote);
 		this.context.subscriptions.push(deleteNote);
@@ -212,6 +214,7 @@ export class WorkspaceContext {
 
 				return cmt;
 			});
+			this.writeThreads()
 		})
 		this.commands.push(editNote);
 		this.context.subscriptions.push(editNote);
@@ -271,6 +274,12 @@ export class WorkspaceContext {
 
 	saveThread(thread: CommentThread) {
 		this.threads.add(thread)
+		this.writeThreads()
+	}
+
+	deleteThread(thread: CommentThread) {
+		this.threads.delete(thread)
+		thread.dispose()
 		this.writeThreads()
 	}
 
