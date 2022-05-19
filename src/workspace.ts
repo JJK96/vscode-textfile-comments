@@ -23,6 +23,7 @@ import * as fs from 'fs';
 
 let commentId = 1;
 const default_author = "Unknown"
+const default_label = "open"
 
 class NoteComment implements Comment {
 	id: number;
@@ -45,17 +46,20 @@ class NoteComment implements Comment {
 			mode: this.mode,
 			author: this.author,
 			contextValue: this.contextValue,
+			label: this.label,
 		}
 	}
 
 	static fromJSON(comment: any) {
-		return new NoteComment(
+		const newComment = new NoteComment(
 			comment.body,
 			comment.mode,
 			comment.author,
 			undefined,
 			comment.contextValue
 		)
+		newComment.label = comment.label
+		return newComment
 	}
 }
 
@@ -101,6 +105,10 @@ export class WorkspaceContext {
 
 	registerCommands() {
 		let createNote = commands.registerCommand('textfile_comments.createNote', (reply: CommentReply) => {
+			const thread = reply.thread
+			if (thread) {
+				thread.contextValue = default_label
+			}
 			this.replyNote(reply);
 		})
 		this.commands.push(createNote)
@@ -130,19 +138,32 @@ export class WorkspaceContext {
 				return;
 			}
 
-			thread.contextValue = undefined;
+			thread.contextValue = default_label;
 			thread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
 			if (reply.text) {
 				const newComment = new NoteComment(reply.text, CommentMode.Preview, { name: this.author }, thread);
-				thread.comments = [...thread.comments, newComment].map(comment => {
-					comment.label = "open";
-					return comment;
-				});
+				thread.comments = [...thread.comments, newComment]
 			}
+			thread.comments = thread.comments.map(comment => {
+				comment.label = default_label;
+				return comment;
+			});
 			this.saveThread(reply.thread);
 		})
 		this.commands.push(finishDraft);
 		this.context.subscriptions.push(finishDraft);
+
+		let resolve = commands.registerCommand('textfile_comments.resolve', (reply: CommentReply) => {
+			this.updateLabel(reply.thread, "resolved")
+		})
+		this.commands.push(resolve);
+		this.context.subscriptions.push(resolve);
+
+		let unresolve = commands.registerCommand('textfile_comments.unresolve', (reply: CommentReply) => {
+			this.updateLabel(reply.thread, default_label)
+		})
+		this.commands.push(unresolve);
+		this.context.subscriptions.push(unresolve);
 
 		let deleteNoteComment = commands.registerCommand('textfile_comments.deleteNoteComment', (comment: NoteComment) => {
 			const thread = comment.parent;
@@ -231,6 +252,8 @@ export class WorkspaceContext {
 		const newComment = new NoteComment(reply.text, CommentMode.Preview, { name: this.author }, thread, thread.comments.length ? 'canDelete' : undefined);
 		if (thread.contextValue === 'draft') {
 			newComment.label = 'pending';
+		} else {
+			newComment.label = default_label;
 		}
 
 		thread.comments = [...thread.comments, newComment];
@@ -251,24 +274,35 @@ export class WorkspaceContext {
 				new_thread.comments.forEach((comment:Comment) => {
 					(comment as NoteComment).parent = new_thread
 				})
+				new_thread.contextValue = thread.contextValue
 				this.threads.add(new_thread)
 			}
 		}
 	}
 
+	updateLabel(thread: CommentThread, label: string) {
+		if (!thread) {
+			return;
+		}
+		thread.contextValue = label
+		thread.comments = thread.comments.map(comment => {
+			comment.label = label;
+			return comment;
+		});
+		this.writeThreads();
+	}
+
 	writeThreads() {
-		console.log("Saving all threads to file")
-		console.log(this.filePath)
 		let threads = []
 		for (let thread of this.threads) {
 			threads.push({
 				uri: thread.uri,
 				range: thread.range,
+				contextValue: thread.contextValue,
 				comments: thread.comments
 			})
 		}
 		const data = JSON.stringify(threads)
-		console.log(data)
 		fs.writeFileSync(this.filePath, data)
 	}
 

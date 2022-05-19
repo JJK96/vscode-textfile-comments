@@ -89,6 +89,14 @@
 				"title": "Finish Draft"
 			},
 			{
+				"command": "textfile_comments.resolve",
+				"title": "Resolve"
+			},
+			{
+				"command": "textfile_comments.unresolve",
+				"title": "Unresolve"
+			},
+			{
 				"command": "textfile_comments.dispose",
 				"title": "Remove All Notes"
 			}
@@ -128,7 +136,7 @@
 				{
 					"command": "textfile_comments.replyNote",
 					"group": "inline",
-					"when": "commentController == textfile_comments && !commentThreadIsEmpty"
+					"when": "commentController == textfile_comments && !commentThreadIsEmpty && commentThread != resolved"
 				},
 				{
 					"command": "textfile_comments.startDraft",
@@ -139,6 +147,16 @@
 					"command": "textfile_comments.finishDraft",
 					"group": "inline",
 					"when": "commentController == textfile_comments && commentThread == draft"
+				},
+				{
+					"command": "textfile_comments.resolve",
+					"group": "inline",
+					"when": "commentController == textfile_comments && commentThread == open"
+				},
+				{
+					"command": "textfile_comments.unresolve",
+					"group": "inline",
+					"when": "commentController == textfile_comments && commentThread == resolved"
 				}
 			],
 			"comments/comment/title": [
