@@ -1,0 +1,184 @@
+{
+	"name": "textfile-comments",
+	"displayName": "Textfile Comments",
+	"description": "Create comments using VS Code's comments API and store them in a file",
+	"version": "0.0.1",
+	"publisher": "JJKorpershoek",
+	"private": true,
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Microsoft/vscode-extension-samples"
+	},
+	"engines": {
+		"vscode": "^1.65.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "Textfile Comments",
+			"properties": {
+				"textfile_comments.author": {
+					"type": "string",
+					"default": "Author",
+					"description": "Set the name to appear as the author in your comments."
+				},
+				"textfile_comments.filename": {
+					"type": "string",
+					"default": "comments.json",
+					"description": "Filename to store comments in"
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "textfile_comments.createNote",
+				"title": "Create Note",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "textfile_comments.replyNote",
+				"title": "Reply",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "textfile_comments.editNote",
+				"title": "Edit",
+				"icon": {
+					"dark": "resources/edit_inverse.svg",
+					"light": "resources/edit.svg"
+				}
+			},
+			{
+				"command": "textfile_comments.deleteNote",
+				"title": "Delete",
+				"icon": {
+					"dark": "resources/close_inverse.svg",
+					"light": "resources/close.svg"
+				}
+			},
+			{
+				"command": "textfile_comments.deleteNoteComment",
+				"title": "Delete",
+				"icon": {
+					"dark": "resources/close_inverse.svg",
+					"light": "resources/close.svg"
+				}
+			},
+			{
+				"command": "textfile_comments.saveNote",
+				"title": "Save"
+			},
+			{
+				"command": "textfile_comments.cancelsaveNote",
+				"title": "Cancel"
+			},
+			{
+				"command": "textfile_comments.startDraft",
+				"title": "Start Draft",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "textfile_comments.finishDraft",
+				"title": "Finish Draft"
+			},
+			{
+				"command": "textfile_comments.dispose",
+				"title": "Remove All Notes"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "textfile_comments.createNote",
+					"when": "false"
+				},
+				{
+					"command": "textfile_comments.replyNote",
+					"when": "false"
+				},
+				{
+					"command": "textfile_comments.deleteNote",
+					"when": "false"
+				},
+				{
+					"command": "textfile_comments.deleteNoteComment",
+					"when": "false"
+				}
+			],
+			"comments/commentThread/title": [
+				{
+					"command": "textfile_comments.deleteNote",
+					"group": "navigation",
+					"when": "commentController == textfile_comments && !commentThreadIsEmpty"
+				}
+			],
+			"comments/commentThread/context": [
+				{
+					"command": "textfile_comments.createNote",
+					"group": "inline",
+					"when": "commentController == textfile_comments && commentThreadIsEmpty"
+				},
+				{
+					"command": "textfile_comments.replyNote",
+					"group": "inline",
+					"when": "commentController == textfile_comments && !commentThreadIsEmpty"
+				},
+				{
+					"command": "textfile_comments.startDraft",
+					"group": "inline",
+					"when": "commentController == textfile_comments && commentThreadIsEmpty"
+				},
+				{
+					"command": "textfile_comments.finishDraft",
+					"group": "inline",
+					"when": "commentController == textfile_comments && commentThread == draft"
+				}
+			],
+			"comments/comment/title": [
+				{
+					"command": "textfile_comments.editNote",
+					"group": "group@1",
+					"when": "commentController == textfile_comments"
+				},
+				{
+					"command": "textfile_comments.deleteNoteComment",
+					"group": "group@2",
+					"when": "commentController == textfile_comments && comment == canDelete"
+				}
+			],
+			"comments/comment/context": [
+				{
+					"command": "textfile_comments.cancelsaveNote",
+					"group": "inline@1",
+					"when": "commentController == textfile_comments"
+				},
+				{
+					"command": "textfile_comments.saveNote",
+					"group": "inline@2",
+					"when": "commentController == textfile_comments"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"lint": "eslint . --ext .ts,.tsx"
+	},
+	"devDependencies": {
+		"@types/node": "^12.12.0",
+		"@types/vscode": "~1.65.0",
+		"@typescript-eslint/eslint-plugin": "^5.19.0",
+		"@typescript-eslint/parser": "^5.19.0",
+		"eslint": "^8.13.0",
+		"typescript": "^4.6.3"
+	}
+}
