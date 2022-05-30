@@ -4,6 +4,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { WorkspaceContext } from './workspace';
 
+export const log = vscode.window.createOutputChannel("Textfile_Comments")
+
 /**
  * Get the path name of the workspace
  * workspace root, assumed to be the first item in the array

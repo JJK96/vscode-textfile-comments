@@ -2,7 +2,7 @@
 	"name": "textfile-comments",
 	"displayName": "Textfile Comments",
 	"description": "Create comments using VS Code's comments API and store them in a file",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"publisher": "JJKorpershoek",
 	"private": true,
 	"license": "MIT",

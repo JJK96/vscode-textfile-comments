@@ -17,10 +17,12 @@ import {
 	WorkspaceConfiguration,
 	FileSystemWatcher,
 	CommentController,
+	window,
 } from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { time } from 'console';
+import { log } from './extension';
 
 let commentId = 1;
 const default_author = "Unknown"
@@ -68,7 +70,7 @@ class NoteComment implements Comment {
 export class WorkspaceContext {
 	private commentController: CommentController;
 	private commands: Disposable[] = [];
-	private threads = new Set<CommentThread>();
+	private threads = new Map<String, CommentThread>();
 	private fileWatcher: FileSystemWatcher;
 
 	constructor(private context: ExtensionContext, public workspaceRoot: string) {
@@ -87,7 +89,11 @@ export class WorkspaceContext {
 	}
 
 	get author(): string {
-		return this.config.get('author')!
+		const res:string = this.config.get('author')!
+		if (res == "Author") {
+			window.showErrorMessage("Please set the author setting to your name so it appears on your comments")
+		}
+		return res
 	}
 
 	initCommentController() {
@@ -272,21 +278,26 @@ export class WorkspaceContext {
 	}
 
 	refresh() {
-		for (const thread of this.threads) {
+		log.appendLine("Refreshing")
+		for (const thread of this.threads.values()) {
 			thread.dispose();
 		}
 		this.readThreads();
 	}
 
 	readThreads() {
+		log.appendLine("Reading")
+		log.appendLine("Resetting this.threads")
+		this.threads = new Map<String, CommentThread>();
 		if (fs.existsSync(this.filePath)) {
-			this.threads = new Set<CommentThread>();
 			const bufferData = fs.readFileSync(this.filePath)
 			const threads= JSON.parse(bufferData.toString())
 			for (const thread of threads) {
+				const start = thread.range[0]
+				const end = thread.range[1] 
 				const new_thread = this.commentController.createCommentThread(
 					thread.uri,
-					new Range(thread.range[0], thread.range[1]),
+					new Range(start.line, start.character, end.line, end.character),
 					thread.comments.map((comment: any) => {
 						return NoteComment.fromJSON(comment)
 					})
@@ -295,7 +306,7 @@ export class WorkspaceContext {
 					(comment as NoteComment).parent = new_thread
 				})
 				new_thread.contextValue = thread.contextValue
-				this.threads.add(new_thread)
+				this.threads.set(new_thread.uri.toString(), new_thread)
 			}
 		}
 	}
@@ -313,8 +324,10 @@ export class WorkspaceContext {
 	}
 
 	writeThreads() {
+		log.appendLine("Writing threads")
+		log.appendLine("Threads size: " + this.threads.size)
 		let threads = []
-		for (let thread of this.threads) {
+		for (let thread of this.threads.values()) {
 			threads.push({
 				uri: thread.uri,
 				range: thread.range,
@@ -333,12 +346,12 @@ export class WorkspaceContext {
 	}
 
 	saveThread(thread: CommentThread) {
-		this.threads.add(thread)
+		this.threads.set(thread.uri.toString(), thread)
 		this.writeThreads()
 	}
 
 	deleteThread(thread: CommentThread) {
-		this.threads.delete(thread)
+		this.threads.delete(thread.uri.toString())
 		thread.dispose()
 		this.writeThreads()
 	}
@@ -369,12 +382,14 @@ export class WorkspaceContext {
 	watchForFileChanges() {
 		// refresh comment view on manual changes in the comments file
 		this.fileWatcher.onDidChange(() => {
+			log.appendLine("File changed")
 			this.refresh();
 		});
 		this.fileWatcher.onDidCreate(() => {
 			this.refresh();
 		});
 		this.fileWatcher.onDidDelete(() => {
+			log.appendLine("Deleted file")
 			this.refresh();
 		});
 	}
