@@ -6,6 +6,7 @@
 	"publisher": "JJKorpershoek",
 	"private": true,
 	"license": "MIT",
+	"icon": "icon.png",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Microsoft/vscode-extension-samples"
